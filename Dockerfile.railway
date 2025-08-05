@@ -1,0 +1,52 @@
+FROM php:8.1-apache
+
+# Instalar extensiones necesarias
+RUN apt-get update && apt-get install -y \
+    libzip-dev \
+    unzip \
+    git \
+    netcat-traditional \
+    && docker-php-ext-install pdo pdo_mysql zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Habilitar módulos necesarios para Railway
+RUN a2enmod rewrite headers
+
+# Configurar Apache DocumentRoot
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}/!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Configurar ServerName para evitar warnings
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# Copiar código fuente
+WORKDIR /var/www/html
+COPY . .
+
+# Instalar dependencias de Composer
+RUN composer install --no-dev --optimize-autoloader
+
+# Configurar permisos
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html \
+    && chmod -R 777 /var/www/html/public/tracking \
+    && chmod -R 777 /var/www/html/public/assets/uploads
+
+# Crear archivo de configuración desde example
+RUN cp /var/www/html/config/config.example.php /var/www/html/config/config.php
+
+# Exponer puerto dinámico de Railway
+EXPOSE $PORT
+
+# Script de inicio para Railway
+COPY docker/railway-start.sh /usr/local/bin/railway-start.sh
+RUN chmod +x /usr/local/bin/railway-start.sh
+
+# Health check removido para simplificar
+
+CMD ["/usr/local/bin/railway-start.sh"]

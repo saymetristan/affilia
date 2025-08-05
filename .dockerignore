@@ -1,0 +1,15 @@
+.git
+.gitignore
+README.md
+.env
+.env.example
+.DS_Store
+node_modules
+vendor
+composer.lock
+public/tracking/*
+public/assets/uploads/*
+!public/assets/uploads/.htaccess
+!public/tracking/.gitkeep
+docker-compose.yml
+Dockerfile

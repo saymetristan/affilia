@@ -1,0 +1,18 @@
+.DS_Store
+config.php
+public/tracking/*
+public/assets/uploads/*
+!public/assets/uploads/.htaccess
+!public/tracking/.gitkeep
+!public/assets/uploads/.gitkeep
+repomix*
+vendor/*
+composer.lock
+
+# Docker
+.env
+docker/ssl/*
+!docker/ssl/.gitkeep
+
+# Logs
+*.logvendor/

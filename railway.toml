@@ -1,0 +1,22 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.railway"
+
+[deploy]
+restartPolicyType = "on_failure"
+startCommand = "/usr/local/bin/railway-start.sh"
+
+[environment]
+# Variables que Railway llenará automáticamente
+MYSQL_HOST = "${{MYSQL_HOST}}"
+MYSQL_PORT = "${{MYSQL_PORT}}"
+MYSQL_DATABASE = "${{MYSQL_DATABASE}}"
+MYSQL_USER = "${{MYSQL_USER}}"
+MYSQL_PASSWORD = "${{MYSQL_PASSWORD}}"
+MYSQL_URL = "${{MYSQL_URL}}"
+
+# Variables de aplicación
+APP_DEBUG = "false"
+APP_URL = "${{RAILWAY_STATIC_URL}}"
+
+# Variables de entorno específicas (Railway las proporciona automáticamente)
