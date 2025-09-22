@@ -3,10 +3,10 @@
 namespace Numok\Controllers;
 
 use Numok\Database\Database;
+use Numok\Services\ProgramScriptGenerator;
 
 class TrackingController extends Controller {
     public function script(int $programId): void {
-        // Get program
         $program = Database::query(
             "SELECT * FROM programs WHERE id = ? AND status = 'active' LIMIT 1",
             [$programId]
@@ -18,28 +18,46 @@ class TrackingController extends Controller {
             exit;
         }
 
-        // Set JavaScript content type
-        header('Content-Type: application/javascript');
-        
-        // Set CORS headers to allow the script to be loaded from any domain
-        header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Allow-Methods: GET');
-        
-        // Cache control - might want to adjust this in production
-        header('Cache-Control: public, max-age=3600'); // 1 hour cache
-        header('Vary: Origin');
+        $settings = $this->getSettings();
+        $appUrl = $settings['app_url'] ?? '';
 
-        // Get the script content
-        $scriptPath = ROOT_PATH . '/public/assets/js/numok-tracking.js';
-        if (!file_exists($scriptPath)) {
+        $domain = '';
+        if (!empty($appUrl)) {
+            $parsed = parse_url($appUrl);
+            if (!empty($parsed['host'])) {
+                $domain = $parsed['host'];
+                if (!empty($parsed['port'])) {
+                    $domain .= ':' . $parsed['port'];
+                }
+            } else {
+                $domain = preg_replace('#^https?://#', '', trim($appUrl));
+            }
+        }
+
+        if (empty($domain) && !empty($_SERVER['HTTP_HOST'])) {
+            $domain = $_SERVER['HTTP_HOST'];
+        }
+
+        if (empty($domain)) {
+            $domain = 'localhost';
+        }
+
+        $domain = rtrim($domain, '/');
+
+        $scriptPath = ROOT_PATH . "/public/tracking/program-{$programId}.js";
+
+        if (!ProgramScriptGenerator::generate($program, $domain) || !file_exists($scriptPath)) {
             header("HTTP/1.0 500 Internal Server Error");
-            echo "Tracking script not found";
+            echo "Tracking script not available";
             exit;
         }
 
-        // Output the script with program ID
-        echo sprintf("const NUMOK_PROGRAM_ID = %d;\n", $programId);
-        echo sprintf("const NUMOK_BASE_URL = '%s';\n", rtrim($settings['app_url'] ?? '', '/'));
+        header('Content-Type: application/javascript');
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET');
+        header('Cache-Control: public, max-age=3600');
+        header('Vary: Origin');
+
         echo file_get_contents($scriptPath);
     }
 
@@ -63,7 +81,7 @@ class TrackingController extends Controller {
         // Format settings
         $config = [
             'cookie_days' => (int)$program['cookie_days'],
-            'track_clicks' => !empty($settings['value'])
+            'track_clicks' => !empty($settings['value'] ?? null)
         ];
 
         // Return JSON response
