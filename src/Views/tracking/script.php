@@ -1,26 +1,22 @@
-(function() {
-    const COOKIE_NAME = 'numok_tracking';
-    const PROGRAM_ID = '<?= $program['id'] ?>';
-    let config = null;
+const API_DOMAIN = window.location.host;
+const COOKIE_NAME = 'numok_tracking';
+const IMPRESSION_COOKIE_PREFIX = 'numok_impression_';
+const IMPRESSION_COOKIE_HOURS = 24;
+const PROGRAM_ID = '<?= $program['id'] ?>';
 
+(function() {
     class NumokTracker {
         constructor() {
-            // Initialize tracker
             this.init();
         }
 
         async init() {
             try {
-                // Get configuration from server
-                config = await this.loadConfig();
-
-                // Parse URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
-                
-                // Check for tracking code
+                let trackingData = this.getTrackingData();
+
                 if (urlParams.has('via')) {
-                    // Store tracking data in cookie
-                    const trackingData = {
+                    trackingData = {
                         tracking_code: urlParams.get('via'),
                         sid: urlParams.get('sid') || null,
                         sid2: urlParams.get('sid2') || null,
@@ -29,74 +25,35 @@
                         timestamp: new Date().toISOString()
                     };
 
-                    // Save tracking data
-                    await this.saveTrackingData(trackingData);
+                    this.saveTrackingData(trackingData);
+                }
 
-                    // Track click if enabled
-                    if (config.track_clicks) {
-                        await this.trackClick(trackingData);
-                    }
+                if (trackingData?.tracking_code) {
+                    this.trackImpression(trackingData.tracking_code).catch(console.error);
                 }
             } catch (error) {
                 console.error('Numok tracker initialization error:', error);
             }
         }
 
-        /**
-         * Load configuration from server
-         */
-        async loadConfig() {
-            const response = await fetch('/tracking/config/' + PROGRAM_ID);
-            if (!response.ok) {
-                throw new Error('Failed to load tracker configuration');
-            }
-            return await response.json();
-        }
-
-        /**
-         * Save tracking data
-         * @param {Object} data Tracking data to save
-         */
-        async saveTrackingData(data) {
-            if (!config) return;
-
-            // Prepare cookie data
-            const cookieData = {
-                program_id: PROGRAM_ID,
-                tracking_code: data.code,
-                ...data.sid && { sid: data.sid },
-                ...data.sid2 && { sid2: data.sid2 },
-                ...data.sid3 && { sid3: data.sid3 },
-                referrer: data.referrer,
-                landing_page: data.landing,
-                timestamp: new Date().toISOString()
-            };
-
-            // Set cookie with configured expiration
+        saveTrackingData(data) {
             const expires = new Date();
-            expires.setDate(expires.getDate() + config.cookie_days);
-            document.cookie = `${COOKIE_NAME}=${JSON.stringify(cookieData)};expires=${expires.toUTCString()};path=/`;
-
-            // Track click if enabled
-            if (config.track_clicks) {
-                await this.trackClick(cookieData);
-            }
+            expires.setDate(expires.getDate() + <?= (int) $program['cookie_days'] ?>);
+            document.cookie = `${COOKIE_NAME}=${JSON.stringify(data)};expires=${expires.toUTCString()};path=/`;
+            this.trackClick(data).catch(console.error);
         }
 
-        /**
-         * Track click
-         * @param {Object} data Click data
-         */
         async trackClick(data) {
             try {
-                const response = await fetch('/tracking/click', {
+                const trackingEnabled = await this.checkTrackingEnabled();
+                if (!trackingEnabled) return;
+
+                const response = await fetch(`https://${API_DOMAIN}/api/tracking/click`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to track click');
                 }
@@ -105,43 +62,50 @@
             }
         }
 
-        /**
-         * Track impression
-         */
-        async trackImpression() {
-            try {
-                const cookieData = this.getTrackingData();
-                if (!cookieData?.tracking_code) return;
+        async trackImpression(trackingCode) {
+            const impressionCookie = this.getImpressionCookieName(trackingCode);
+            if (this.getCookie(impressionCookie)) {
+                return;
+            }
 
-                const response = await fetch('/tracking/impression', {
+            try {
+                const response = await fetch(`https://${API_DOMAIN}/api/tracking/impression`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         program_id: PROGRAM_ID,
-                        tracking_code: cookieData.tracking_code,
+                        tracking_code: trackingCode,
                         url: window.location.href
                     })
                 });
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to track impression');
                 }
 
-                // Set impression cookie to prevent duplicate tracking
                 const expires = new Date();
-                expires.setDate(expires.getDate() + 1); // 24 hour impression cookie
-                document.cookie = `numok_impression_${cookieData.tracking_code}=1;expires=${expires.toUTCString()};path=/`;
+                expires.setTime(expires.getTime() + IMPRESSION_COOKIE_HOURS * 60 * 60 * 1000);
+                document.cookie = `${impressionCookie}=1;expires=${expires.toUTCString()};path=/`;
             } catch (error) {
                 console.error('Error tracking impression:', error);
             }
         }
 
-        /**
-         * Get Stripe metadata
-         * @returns {Object} Metadata for Stripe
-         */
+        async checkTrackingEnabled() {
+            try {
+                const response = await fetch(`https://${API_DOMAIN}/api/tracking/config/${PROGRAM_ID}`);
+                if (!response.ok) {
+                    return false;
+                }
+
+                const config = await response.json();
+                return config.track_clicks || false;
+            } catch (error) {
+                console.error('Error loading tracking configuration:', error);
+                return false;
+            }
+        }
+
         getStripeMetadata() {
             const data = this.getTrackingData();
             if (!data) return {};
@@ -154,10 +118,6 @@
             };
         }
 
-        /**
-         * Get tracking data from cookie
-         * @returns {Object|null} Tracking data or null
-         */
         getTrackingData() {
             const cookie = this.getCookie(COOKIE_NAME);
             if (!cookie) return null;
@@ -170,25 +130,19 @@
             }
         }
 
-        /**
-         * Get cookie by name
-         * @param {string} name Cookie name
-         * @returns {string|null} Cookie value or null
-         */
+        getImpressionCookieName(trackingCode) {
+            return `${IMPRESSION_COOKIE_PREFIX}${trackingCode}`;
+        }
+
         getCookie(name) {
             const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
             return match ? match[2] : null;
         }
 
-        /**
-         * Check if there's active tracking
-         * @returns {boolean}
-         */
         hasTracking() {
             return !!this.getTrackingData();
         }
     }
 
-    // Initialize and expose to window
     window.numok = new NumokTracker();
 })();

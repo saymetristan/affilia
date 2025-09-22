@@ -115,10 +115,15 @@
                             <p class="font-medium text-gray-900">What this script does:</p>
                             <ul class="mt-2 list-disc pl-5 text-gray-500 space-y-1">
                                 <li>Detects affiliate tracking codes in URLs (<code>?via=TRACKING_CODE</code>)</li>
-                                <li>Stores tracking data in cookies (30 day duration)</li>
-                                <li>Tracks clicks and page views</li>
+                                <li>Stores tracking data in cookies (<?= (int) $program['cookie_days'] ?> day duration)</li>
+                                <li>Registers a single impression per tracking code every 24h by calling <code>/api/tracking/impression</code></li>
+                                <li>Sends click events to <code>/api/tracking/click</code> after confirming tracking is enabled</li>
                                 <li>Provides Stripe integration helpers</li>
                             </ul>
+                            <p class="mt-3 text-gray-500">
+                                Impressions are reported on the first page load where a tracking code is present (either in the URL or an existing cookie).
+                                To avoid duplicate reports, the script stores a short-lived cookie (<code>numok_impression_&lt;code&gt;</code>) that expires after 24 hours.
+                            </p>
                         </div>
                     </div>
                 </div>

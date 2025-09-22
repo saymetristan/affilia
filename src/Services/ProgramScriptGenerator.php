@@ -13,6 +13,8 @@ class ProgramScriptGenerator {
     const COOKIE_DAYS = {$program['cookie_days']};
     const PROGRAM_ID = {$program['id']};
     const API_DOMAIN = '{$domain}';
+    const IMPRESSION_COOKIE_PREFIX = 'numok_impression_';
+    const IMPRESSION_COOKIE_HOURS = 24;
 
     class NumokTracker {
         constructor() {
@@ -21,8 +23,10 @@ class ProgramScriptGenerator {
 
         init() {
             const urlParams = new URLSearchParams(window.location.search);
+            let trackingData = this.getTrackingData();
+
             if (urlParams.has('via')) {
-                const trackingData = {
+                trackingData = {
                     tracking_code: urlParams.get('via'),
                     sid: urlParams.get('sid') || null,
                     sid2: urlParams.get('sid2') || null,
@@ -32,6 +36,10 @@ class ProgramScriptGenerator {
                 };
 
                 this.saveTrackingData(trackingData);
+            }
+
+            if (trackingData?.tracking_code) {
+                this.trackImpression(trackingData.tracking_code).catch(console.error);
             }
         }
 
@@ -57,6 +65,31 @@ class ProgramScriptGenerator {
             }
         }
 
+        async trackImpression(trackingCode) {
+            const impressionCookie = this.getImpressionCookieName(trackingCode);
+            if (this.getCookie(impressionCookie)) {
+                return;
+            }
+
+            try {
+                await fetch(`https://\${API_DOMAIN}/api/tracking/impression`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        program_id: PROGRAM_ID,
+                        tracking_code: trackingCode,
+                        url: window.location.href
+                    })
+                });
+
+                const expires = new Date();
+                expires.setTime(expires.getTime() + IMPRESSION_COOKIE_HOURS * 60 * 60 * 1000);
+                document.cookie = `\${impressionCookie}=1;expires=\${expires.toUTCString()};path=/`;
+            } catch (error) {
+                console.error('Impression tracking failed:', error);
+            }
+        }
+
         async checkTrackingEnabled() {
             try {
                 const response = await fetch(`https://\${API_DOMAIN}/api/tracking/config/\${PROGRAM_ID}`);
@@ -65,6 +98,10 @@ class ProgramScriptGenerator {
             } catch {
                 return false;
             }
+        }
+
+        getImpressionCookieName(trackingCode) {
+            return IMPRESSION_COOKIE_PREFIX + trackingCode;
         }
 
         getStripeMetadata() {
