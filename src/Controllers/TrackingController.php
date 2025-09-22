@@ -19,34 +19,11 @@ class TrackingController extends Controller {
         }
 
         $settings = $this->getSettings();
-        $appUrl = $settings['app_url'] ?? '';
-
-        $domain = '';
-        if (!empty($appUrl)) {
-            $parsed = parse_url($appUrl);
-            if (!empty($parsed['host'])) {
-                $domain = $parsed['host'];
-                if (!empty($parsed['port'])) {
-                    $domain .= ':' . $parsed['port'];
-                }
-            } else {
-                $domain = preg_replace('#^https?://#', '', trim($appUrl));
-            }
-        }
-
-        if (empty($domain) && !empty($_SERVER['HTTP_HOST'])) {
-            $domain = $_SERVER['HTTP_HOST'];
-        }
-
-        if (empty($domain)) {
-            $domain = 'localhost';
-        }
-
-        $domain = rtrim($domain, '/');
+        $baseUrl = $this->getBaseUrl($settings['app_url'] ?? null);
 
         $scriptPath = ROOT_PATH . "/public/tracking/program-{$programId}.js";
 
-        if (!ProgramScriptGenerator::generate($program, $domain) || !file_exists($scriptPath)) {
+        if (!ProgramScriptGenerator::generate($program, $baseUrl) || !file_exists($scriptPath)) {
             header("HTTP/1.0 500 Internal Server Error");
             echo "Tracking script not available";
             exit;
