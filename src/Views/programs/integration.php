@@ -107,8 +107,25 @@
                             <p>Add this script to every page of your website to track affiliate referrals. Place it in the <code>&lt;head&gt;</code> section:</p>
                         </div>
                         <div class="mt-3">
+                            <?php
+                            $resolvedBaseUrl = isset($baseUrl) ? rtrim($baseUrl, '/') : '';
+                            if ($resolvedBaseUrl === '' && !empty($_SERVER['HTTP_HOST'])) {
+                                if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+                                    $forwardedProtoParts = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO']);
+                                    $scheme = strtolower(trim($forwardedProtoParts[0]));
+                                    $scheme = $scheme !== '' ? $scheme : 'http';
+                                } else {
+                                    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                                }
+                                $resolvedBaseUrl = $scheme . '://' . trim($_SERVER['HTTP_HOST'], '/');
+                            }
+                            if ($resolvedBaseUrl === '') {
+                                $resolvedBaseUrl = 'http://localhost';
+                            }
+                            $trackingScriptUrl = rtrim($resolvedBaseUrl, '/') . '/tracking/program-' . $program['id'] . '.js';
+                            ?>
                             <div class="rounded-md bg-gray-50 p-4">
-                                <pre class="text-sm text-gray-800 whitespace-pre-wrap"><code class="language-html">&lt;script src="https://<?= $_SERVER['HTTP_HOST'] ?>/tracking/program-<?= $program['id'] ?>.js"&gt;&lt;/script&gt;</code></pre>
+                                <pre class="text-sm text-gray-800 whitespace-pre-wrap"><code class="language-html">&lt;script src="<?= htmlspecialchars($trackingScriptUrl, ENT_QUOTES) ?>"&gt;&lt;/script&gt;</code></pre>
                             </div>
                         </div>
                         <div class="mt-3 text-sm">
