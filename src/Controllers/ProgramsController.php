@@ -113,14 +113,12 @@ class ProgramsController extends Controller {
             exit;
         }
 
-        // Get settings for the app URL
-        $appUrlSetting = Database::query("SELECT * FROM settings WHERE name = 'app_url' LIMIT 1")->fetch();
         $settings = $this->getSettings();
 
         $this->view('programs/integration', [
             'title' => 'Integration Guide - ' . ($settings['custom_app_name'] ?? 'Numok'),
             'program' => $program,
-            'settings' => $appUrlSetting
+            'settings' => $settings
         ]);
     }
 

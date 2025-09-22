@@ -1,5 +1,7 @@
 <?php
 // src/Views/settings/index.php
+$defaultScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+$resolvedAppUrl = rtrim(trim($settings['app_url'] ?? '') ?: $defaultScheme . ($_SERVER['HTTP_HOST'] ?? ''), '/');
 ?>
 <div class="py-6">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -175,17 +177,37 @@
                         <div class="mt-4 space-y-4 max-w-xl">
                             <form action="/admin/settings/update" method="POST">
                                 <div class="mb-4">
+                                    <label for="app_url" class="block text-sm font-medium text-gray-700">Application URL</label>
+                                    <input type="url" name="app_url" id="app_url"
+                                           value="<?= htmlspecialchars($settings['app_url'] ?? '') ?>"
+                                           placeholder="https://yourapp.com"
+                                           class="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3">
+                                    <p class="mt-2 text-sm text-gray-500">Used to generate integration and webhook URLs.</p>
+                                </div>
+
+                                <div class="mb-4">
                                     <label for="stripe_secret_key" class="block text-sm font-medium text-gray-700">Secret Key</label>
-                                    <input type="password" name="stripe_secret_key" id="stripe_secret_key" 
+                                    <input type="password" name="stripe_secret_key" id="stripe_secret_key"
                                            value="<?= htmlspecialchars($settings['stripe_secret_key'] ?? '') ?>"
                                            class="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3">
                                 </div>
                                 
                                 <div class="mb-4">
                                     <label for="stripe_webhook_secret" class="block text-sm font-medium text-gray-700">Webhook Secret</label>
-                                    <input type="password" name="stripe_webhook_secret" id="stripe_webhook_secret" 
+                                    <input type="password" name="stripe_webhook_secret" id="stripe_webhook_secret"
                                            value="<?= htmlspecialchars($settings['stripe_webhook_secret'] ?? '') ?>"
                                            class="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3">
+                                </div>
+
+                                <div class="mb-4">
+                                    <span class="block text-sm font-medium text-gray-700">Click Tracking</span>
+                                    <div class="mt-2 flex items-center">
+                                        <input type="hidden" name="click_tracking_enabled" value="0">
+                                        <input type="checkbox" name="click_tracking_enabled" id="click_tracking_enabled" value="1"
+                                               <?= !empty($settings['click_tracking_enabled']) ? 'checked' : '' ?>
+                                               class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <label for="click_tracking_enabled" class="ml-2 text-sm text-gray-600">Enable click tracking for affiliate links</label>
+                                    </div>
                                 </div>
 
                                 <template x-if="testResults?.messages">
@@ -288,7 +310,7 @@
                                     <li>Go to your <a href="https://dashboard.stripe.com/apikeys" class="text-indigo-600 hover:text-indigo-500" target="_blank">Stripe Dashboard</a></li>
                                     <li>Copy your Secret Key</li>
                                     <li>Create a new webhook endpoint pointing to:
-                                        <code class="block mt-1 p-2 bg-gray-50 rounded text-xs"><?= htmlspecialchars(rtrim($settings['app_url'] ?? 'https://'.$_SERVER['HTTP_HOST'], '/') . '/webhook/stripe') ?></code>
+                                        <code class="block mt-1 p-2 bg-gray-50 rounded text-xs"><?= htmlspecialchars($resolvedAppUrl . '/webhook/stripe') ?></code>
                                     </li>
                                     <li>Copy the webhook signing secret</li>
                                 </ol>

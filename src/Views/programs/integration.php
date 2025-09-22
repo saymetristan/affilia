@@ -34,6 +34,15 @@
     }
 </style>
 
+<?php
+    $appUrl = trim($settings['app_url'] ?? '');
+    if ($appUrl === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+        $appUrl = $scheme . ($_SERVER['HTTP_HOST'] ?? '');
+    }
+    $appUrl = rtrim($appUrl, '/');
+?>
+
 <div class="min-h-full">
     <main>
         <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
@@ -108,7 +117,7 @@
                         </div>
                         <div class="mt-3">
                             <div class="rounded-md bg-gray-50 p-4">
-                                <pre class="text-sm text-gray-800 whitespace-pre-wrap"><code class="language-html">&lt;script src="https://<?= $_SERVER['HTTP_HOST'] ?>/tracking/program-<?= $program['id'] ?>.js"&gt;&lt;/script&gt;</code></pre>
+                                <pre class="text-sm text-gray-800 whitespace-pre-wrap"><code class="language-html">&lt;script src="<?= htmlspecialchars($appUrl) ?>/tracking/program-<?= $program['id'] ?>.js"&gt;&lt;/script&gt;</code></pre>
                             </div>
                         </div>
                         <div class="mt-3 text-sm">
@@ -318,7 +327,7 @@ numok_sid3: tracking_data['sid3']
                         <div class="mt-3">
                             <div class="rounded-md bg-gray-50 p-4">
                                 <h4 class="text-sm font-medium text-gray-900">Webhook URL</h4>
-                                <pre class="mt-2 text-sm text-gray-800"><?= rtrim('https://'.$_SERVER['HTTP_HOST'], '/') ?>/webhook/stripe</pre>
+                                <pre class="mt-2 text-sm text-gray-800"><?= htmlspecialchars($appUrl) ?>/webhook/stripe</pre>
 
                                 <h4 class="mt-4 text-sm font-medium text-gray-900">Required Events</h4>
                                 <ul class="mt-2 list-disc pl-5 text-sm text-gray-600 space-y-1">

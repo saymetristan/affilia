@@ -18,13 +18,16 @@ class TrackingController extends Controller {
             exit;
         }
 
+        // Get global settings for the app URL and tracking configuration
+        $settings = $this->getSettings();
+
         // Set JavaScript content type
         header('Content-Type: application/javascript');
-        
+
         // Set CORS headers to allow the script to be loaded from any domain
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET');
-        
+
         // Cache control - might want to adjust this in production
         header('Cache-Control: public, max-age=3600'); // 1 hour cache
         header('Vary: Origin');
@@ -38,8 +41,14 @@ class TrackingController extends Controller {
         }
 
         // Output the script with program ID
+        $baseUrl = rtrim($settings['app_url'] ?? '', '/');
+        if ($baseUrl === '') {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+            $baseUrl = rtrim($scheme . ($_SERVER['HTTP_HOST'] ?? ''), '/');
+        }
+
         echo sprintf("const NUMOK_PROGRAM_ID = %d;\n", $programId);
-        echo sprintf("const NUMOK_BASE_URL = '%s';\n", rtrim($settings['app_url'] ?? '', '/'));
+        echo sprintf("const NUMOK_BASE_URL = '%s';\n", $baseUrl);
         echo file_get_contents($scriptPath);
     }
 
