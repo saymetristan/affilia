@@ -52,8 +52,40 @@ class Controller {
         header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type');
         header('Access-Control-Max-Age: 86400');
-        
+
         header('Content-Type: application/json');
         echo json_encode($data);
+    }
+
+    protected function getBaseUrl(?array $settings = null): string {
+        if ($settings === null) {
+            $settings = $this->getSettings();
+        }
+
+        if (!empty($settings['app_url'])) {
+            return rtrim($settings['app_url'], '/');
+        }
+
+        $scheme = 'http';
+
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $forwardedProto = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO']);
+            $scheme = trim($forwardedProto[0]);
+        } elseif (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            $scheme = 'https';
+        }
+
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+
+        if ($host === '') {
+            $host = $_SERVER['SERVER_NAME'] ?? 'localhost';
+            $port = $_SERVER['SERVER_PORT'] ?? null;
+
+            if ($port && !in_array($port, ['80', '443'], true)) {
+                $host .= ':' . $port;
+            }
+        }
+
+        return rtrim($scheme . '://' . $host, '/');
     }
 }

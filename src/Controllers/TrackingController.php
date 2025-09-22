@@ -3,6 +3,7 @@
 namespace Numok\Controllers;
 
 use Numok\Database\Database;
+use Numok\Services\ProgramScriptGenerator;
 
 class TrackingController extends Controller {
     public function script(int $programId): void {
@@ -24,10 +25,16 @@ class TrackingController extends Controller {
         // Set CORS headers to allow the script to be loaded from any domain
         header('Access-Control-Allow-Origin: *');
         header('Access-Control-Allow-Methods: GET');
-        
+
         // Cache control - might want to adjust this in production
         header('Cache-Control: public, max-age=3600'); // 1 hour cache
         header('Vary: Origin');
+
+        $settings = $this->getSettings();
+        $baseUrl = $this->getBaseUrl($settings);
+
+        // Ensure tracking script is generated with the right base URL
+        ProgramScriptGenerator::generate($program, $baseUrl);
 
         // Get the script content
         $scriptPath = ROOT_PATH . '/public/assets/js/numok-tracking.js';
@@ -39,7 +46,7 @@ class TrackingController extends Controller {
 
         // Output the script with program ID
         echo sprintf("const NUMOK_PROGRAM_ID = %d;\n", $programId);
-        echo sprintf("const NUMOK_BASE_URL = '%s';\n", rtrim($settings['app_url'] ?? '', '/'));
+        echo sprintf("const NUMOK_BASE_URL = '%s';\n", $baseUrl);
         echo file_get_contents($scriptPath);
     }
 
