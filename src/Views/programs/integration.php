@@ -133,9 +133,16 @@
                             <ul class="mt-2 list-disc pl-5 text-gray-500 space-y-1">
                                 <li>Detects affiliate tracking codes in URLs (<code>?via=TRACKING_CODE</code>)</li>
                                 <li>Stores tracking data in cookies (30 day duration)</li>
-                                <li>Tracks clicks and page views</li>
+                                <li>Reports the first page impression for each tracking code and URL load, no more than once every 24&nbsp;hours</li>
+                                <li>Avoids double counting impressions using browser storage safeguards</li>
                                 <li>Provides Stripe integration helpers</li>
                             </ul>
+                            <p class="mt-3 text-gray-500 text-sm">
+                                Impressions are sent to <code>/api/tracking/impression</code> as soon as the script detects a valid
+                                <code>tracking_code</code> (either from the current URL or a stored cookie). A 24&nbsp;hour mark is
+                                stored in sessionStorage and as a cookie to make sure the same visitor and tracking code are only
+                                counted once per day.
+                            </p>
                         </div>
                     </div>
                 </div>
