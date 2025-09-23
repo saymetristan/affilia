@@ -15,14 +15,23 @@ class WebhookController extends Controller {
         ]);
 
         // Get webhook secret from settings
-        $webhookSecret = Database::query(
+        $webhookSecretSetting = Database::query(
             "SELECT value FROM settings WHERE name = 'stripe_webhook_secret' LIMIT 1"
-        )->fetch()['value'];
+        )->fetch();
+        $webhookSecret = $webhookSecretSetting['value'] ?? null;
+
+        if (empty($webhookSecret)) {
+            $this->logEvent('webhook_missing_secret', [
+                'error' => 'Stripe webhook secret not configured'
+            ]);
+            http_response_code(503);
+            echo json_encode(['error' => 'Stripe webhook secret not configured']);
+            return;
+        }
 
         // Get payload and signature
-        $payload = @file_get_contents('php://input');
         $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
-        
+
         try {
             // Verify signature
             $event = \Stripe\Webhook::constructEvent(
