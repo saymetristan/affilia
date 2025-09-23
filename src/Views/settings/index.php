@@ -133,12 +133,46 @@
                         </div>
                     </div>
                 </div>
+                <!-- General Application Settings -->
+                <div class="bg-white shadow sm:rounded-lg">
+                    <div class="px-4 py-5 sm:p-6">
+                        <h3 class="text-base font-semibold leading-6 text-gray-900">General Settings</h3>
+                        <div class="mt-4 max-w-xl">
+                            <form action="/admin/settings/update" method="POST">
+                                <div class="mb-4">
+                                    <label for="app_url" class="block text-sm font-medium text-gray-700">Application URL</label>
+                                    <input type="url" name="app_url" id="app_url"
+                                           value="<?= htmlspecialchars($settings['app_url'] ?? '') ?>"
+                                           placeholder="https://example.com"
+                                           class="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3">
+                                    <p class="mt-2 text-sm text-gray-500">Used to generate tracking scripts and webhook URLs.</p>
+                                </div>
 
+                                <div class="mb-4">
+                                    <span class="block text-sm font-medium text-gray-700 mb-2">Click Tracking</span>
+                                    <div class="flex items-center">
+                                        <input type="hidden" name="click_tracking_enabled" value="0">
+                                        <input type="checkbox" id="click_tracking_enabled" name="click_tracking_enabled" value="1"
+                                               <?= (!empty($settings['click_tracking_enabled']) && $settings['click_tracking_enabled'] !== '0') ? 'checked' : '' ?>
+                                               class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                        <label for="click_tracking_enabled" class="ml-2 text-sm text-gray-600">Enable recording of partner click events.</label>
+                                    </div>
+                                </div>
 
+                                <div class="mt-6">
+                                    <button type="submit"
+                                            class="inline-flex justify-center rounded-md bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                                        Save General Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Stripe Integration -->
-                <div class="bg-white shadow sm:rounded-lg" x-data="{ 
-                    testResults: null, 
+                <div class="bg-white shadow sm:rounded-lg" x-data="{
+                    testResults: null,
                     testing: false,
                     async testConnection() {
                         this.testing = true;

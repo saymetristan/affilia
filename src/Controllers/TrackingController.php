@@ -51,14 +51,11 @@ class TrackingController extends Controller {
         }
 
         // Get tracking settings
-        $settings = Database::query(
-            "SELECT value FROM settings WHERE name = 'click_tracking_enabled'"
-        )->fetch();
+        $settings = $this->getSettings();
 
-        // Format settings
         $config = [
             'cookie_days' => (int)$program['cookie_days'],
-            'track_clicks' => !empty($settings['value'] ?? null)
+            'track_clicks' => !empty($settings['click_tracking_enabled']) && $settings['click_tracking_enabled'] !== '0'
         ];
 
         // Return JSON response

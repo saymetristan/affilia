@@ -32,25 +32,63 @@ class SettingsController extends Controller {
         }
 
         try {
-            Database::transaction(function() {
-                $settings = [
-                    'app_name' => $_POST['app_name'] ?? 'Numok',
-                    'partner_welcome_message' => $_POST['partner_welcome_message'] ?? '',
-                    'stripe_secret_key' => $_POST['stripe_secret_key'] ?? '',
-                    'stripe_webhook_secret' => $_POST['stripe_webhook_secret'] ?? ''
-                ];
+            $updates = [];
 
-                foreach ($settings as $key => $value) {
-                    Database::query(
-                        "INSERT INTO settings (name, value) 
-                         VALUES (?, ?) 
-                         ON DUPLICATE KEY UPDATE value = VALUES(value)",
-                        [$key, $value]
-                    );
+            if (array_key_exists('app_name', $_POST)) {
+                $appName = trim((string)$_POST['app_name']);
+                $updates['app_name'] = $appName !== '' ? $appName : 'Numok';
+            }
+
+            if (array_key_exists('partner_welcome_message', $_POST)) {
+                $updates['partner_welcome_message'] = trim((string)$_POST['partner_welcome_message']);
+            }
+
+            if (array_key_exists('stripe_secret_key', $_POST)) {
+                $updates['stripe_secret_key'] = trim((string)$_POST['stripe_secret_key']);
+            }
+
+            if (array_key_exists('stripe_webhook_secret', $_POST)) {
+                $updates['stripe_webhook_secret'] = trim((string)$_POST['stripe_webhook_secret']);
+            }
+
+            if (array_key_exists('app_url', $_POST)) {
+                $appUrl = trim((string)$_POST['app_url']);
+
+                if ($appUrl !== '') {
+                    if (!preg_match('/^https?:\/\//i', $appUrl)) {
+                        $appUrl = 'https://' . ltrim($appUrl, '/');
+                    }
+
+                    $appUrl = rtrim($appUrl, '/');
+
+                    if (!filter_var($appUrl, FILTER_VALIDATE_URL)) {
+                        throw new \InvalidArgumentException('Please provide a valid application URL.');
+                    }
                 }
-            });
+
+                $updates['app_url'] = $appUrl;
+            }
+
+            if (array_key_exists('click_tracking_enabled', $_POST)) {
+                $updates['click_tracking_enabled'] = $_POST['click_tracking_enabled'] === '1' ? '1' : '0';
+            }
+
+            if (!empty($updates)) {
+                Database::transaction(function() use ($updates) {
+                    foreach ($updates as $key => $value) {
+                        Database::query(
+                            "INSERT INTO settings (name, value)
+                             VALUES (?, ?)
+                             ON DUPLICATE KEY UPDATE value = VALUES(value)",
+                            [$key, $value]
+                        );
+                    }
+                });
+            }
 
             $_SESSION['settings_success'] = 'Settings updated successfully.';
+        } catch (\InvalidArgumentException $e) {
+            $_SESSION['settings_error'] = $e->getMessage();
         } catch (\Exception $e) {
             $_SESSION['settings_error'] = 'Failed to update settings. Please try again.';
         }
