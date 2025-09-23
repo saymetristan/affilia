@@ -47,7 +47,7 @@ class PartnerProgramsController extends PartnerBaseController {
 
         // Validate program exists and is active
         $program = Database::query(
-            "SELECT id FROM programs WHERE id = ? AND status = 'active'",
+            "SELECT id, terms FROM programs WHERE id = ? AND status = 'active'",
             [$programId]
         )->fetch();
 
@@ -70,29 +70,23 @@ class PartnerProgramsController extends PartnerBaseController {
             exit;
         }
 
-        // Store terms acceptance details
-        if (!empty($program['terms'])) {
-            Database::update(
-                'partner_programs',
-                [
-                    'terms_accepted' => date('Y-m-d H:i:s'),
-                    'terms_accepted_ip' => $_SERVER['REMOTE_ADDR']
-                ],
-                'partner_id = ? AND program_id = ?',
-                [$partnerId, $programId]
-            );
-        }
-
         // Generate unique tracking code
         $trackingCode = bin2hex(random_bytes(8));
 
         try {
-            Database::insert('partner_programs', [
+            $insertData = [
                 'partner_id' => $partnerId,
                 'program_id' => $programId,
                 'tracking_code' => $trackingCode,
                 'status' => 'active'
-            ]);
+            ];
+
+            if (!empty($program['terms'])) {
+                $insertData['terms_accepted'] = date('Y-m-d H:i:s');
+                $insertData['terms_accepted_ip'] = $_SERVER['REMOTE_ADDR'] ?? null;
+            }
+
+            Database::insert('partner_programs', $insertData);
 
             $_SESSION['success'] = 'Successfully joined the program!';
         } catch (\Exception $e) {
