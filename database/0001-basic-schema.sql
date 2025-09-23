@@ -29,6 +29,26 @@ CREATE TABLE `clicks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
+# Dump of table impressions
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `impressions`;
+
+CREATE TABLE `impressions` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `program_id` int unsigned NOT NULL,
+  `tracking_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `url` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `program_id` (`program_id`),
+  KEY `idx_impressions_tracking_code` (`tracking_code`),
+  CONSTRAINT `impressions_ibfk_1` FOREIGN KEY (`program_id`) REFERENCES `programs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 
 # Dump of table conversions
 # ------------------------------------------------------------
