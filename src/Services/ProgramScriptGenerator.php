@@ -10,6 +10,7 @@ class ProgramScriptGenerator {
         $script = <<<JAVASCRIPT
 (function() {
     const COOKIE_NAME = 'numok_tracking';
+    const IMPRESSION_COOKIE_PREFIX = 'numok_impression_';
     const COOKIE_DAYS = {$program['cookie_days']};
     const PROGRAM_ID = {$program['id']};
     const API_BASE_URL = '{$baseUrl}';
@@ -21,6 +22,8 @@ class ProgramScriptGenerator {
 
         init() {
             const urlParams = new URLSearchParams(window.location.search);
+            let trackingCode = null;
+
             if (urlParams.has('via')) {
                 const trackingData = {
                     tracking_code: urlParams.get('via'),
@@ -31,7 +34,17 @@ class ProgramScriptGenerator {
                     timestamp: new Date().toISOString()
                 };
 
+                trackingCode = trackingData.tracking_code;
                 this.saveTrackingData(trackingData);
+            } else {
+                const existingTracking = this.getTrackingData();
+                if (existingTracking?.tracking_code) {
+                    trackingCode = existingTracking.tracking_code;
+                }
+            }
+
+            if (trackingCode) {
+                this.trackImpression(trackingCode).catch(console.error);
             }
         }
 
@@ -57,6 +70,31 @@ class ProgramScriptGenerator {
             }
         }
 
+        async trackImpression(trackingCode) {
+            try {
+                const impressionKey = this.getImpressionKey(trackingCode);
+                if (this.hasImpressionMark(impressionKey)) return;
+
+                const response = await fetch(`\${API_BASE_URL}/api/tracking/impression`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        program_id: PROGRAM_ID,
+                        tracking_code: trackingCode,
+                        url: window.location.href
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Impression tracking failed');
+                }
+
+                this.setImpressionMark(impressionKey);
+            } catch (error) {
+                console.error('Impression tracking failed:', error);
+            }
+        }
+
         async checkTrackingEnabled() {
             try {
                 const response = await fetch(`\${API_BASE_URL}/api/tracking/config/\${PROGRAM_ID}`);
@@ -64,6 +102,36 @@ class ProgramScriptGenerator {
                 return config.track_clicks || false;
             } catch {
                 return false;
+            }
+        }
+
+        getImpressionKey(trackingCode) {
+            const encodedCode = encodeURIComponent(trackingCode);
+            return `\${IMPRESSION_COOKIE_PREFIX}\${PROGRAM_ID}_\${encodedCode}`;
+        }
+
+        hasImpressionMark(key) {
+            try {
+                if (window.sessionStorage && window.sessionStorage.getItem(key)) {
+                    return true;
+                }
+            } catch (error) {
+                // Access to sessionStorage can fail in private modes
+            }
+
+            return !!this.getCookie(key);
+        }
+
+        setImpressionMark(key) {
+            const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            document.cookie = `\${key}=1;expires=\${expires.toUTCString()};path=/`;
+
+            try {
+                if (window.sessionStorage) {
+                    window.sessionStorage.setItem(key, Date.now().toString());
+                }
+            } catch (error) {
+                // sessionStorage may be unavailable
             }
         }
 
