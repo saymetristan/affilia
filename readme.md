@@ -201,3 +201,78 @@ Support
 
 -   GitHub Issues: Report bugs and feature requests
 -   Documentation: https://numok.com
+
+## REST API
+
+Numok ships with an authenticated HTTP API that makes it possible to manage the platform from other services. All endpoints live under `/api/v1/*` and require an API token.
+
+### Authentication
+
+1. Generate one or more random tokens (for example with `openssl rand -hex 32`).
+2. Add the tokens to the `API_TOKENS` environment variable (comma separated) or to the `config/config.php` file under `$config['api']['tokens']`.
+3. Send the token in an `Authorization: Bearer <token>` header or an `X-API-Key: <token>` header when calling the API.
+
+You can store hashed tokens instead of the raw token by running them through `password_hash`. The API will accept both raw and hashed values.
+
+### Available endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/users` | List admin users. |
+| `POST` | `/api/v1/users` | Create a new user (admin or standard). |
+| `GET` | `/api/v1/users/{id}` | Retrieve a single user. |
+| `GET` | `/api/v1/programs` | List all programs (campaigns). |
+| `POST` | `/api/v1/programs` | Create a new program and regenerate its tracking script. |
+| `GET` | `/api/v1/programs/{id}` | Retrieve program details. |
+| `GET` | `/api/v1/partners` | List partners (affiliates). |
+| `POST` | `/api/v1/partners` | Create a new partner. |
+| `GET` | `/api/v1/partners/{id}` | Retrieve partner details. |
+| `GET` | `/api/v1/partners/{id}/links` | List tracking links for the partner across their programs. |
+| `GET` | `/api/v1/partners/{id}/programs` | List partner program assignments including generated URLs. |
+| `POST` | `/api/v1/partners/{id}/programs` | Assign a partner to a program (returns or creates a tracking link). |
+
+### Example requests
+
+Create a user:
+
+```bash
+curl -X POST https://your-domain.com/api/v1/users \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "email": "ops@example.com",
+        "name": "Operations",
+        "password": "super-secret",
+        "is_admin": true
+      }'
+```
+
+Create a program:
+
+```bash
+curl -X POST https://your-domain.com/api/v1/programs \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "Spring campaign",
+        "description": "10% off for referrals",
+        "commission_type": "percentage",
+        "commission_value": 15,
+        "cookie_days": 30,
+        "landing_page": "https://example.com/landing"
+      }'
+```
+
+Assign a partner to a program and obtain the tracking link:
+
+```bash
+curl -X POST https://your-domain.com/api/v1/partners/12/programs \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "program_id": 7,
+        "postback_url": "https://partner-site.test/postback"
+      }'
+```
+
+Use `GET /api/v1/partners/{id}/links` to fetch all landing URLs (with the `via` parameter) that can be shared with a partner.

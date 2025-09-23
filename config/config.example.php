@@ -18,6 +18,12 @@ $config['app'] = [
     'debug' => getenv('APP_DEBUG') ?: true
 ];
 
+// API access configuration
+$config['api'] = [
+    // Comma separated list of tokens or hashed tokens generated with password_hash
+    'tokens' => array_filter(array_map('trim', explode(',', getenv('API_TOKENS') ?: '')))
+];
+
 // Time zone
 date_default_timezone_set('UTC');
 
