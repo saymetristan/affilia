@@ -83,6 +83,14 @@ $routes = [
     'api/tracking/config/(\d+)' => ['TrackingController', 'config'],
     'api/tracking/click' => ['TrackingController', 'click'],
     'api/tracking/impression' => ['TrackingController', 'impression'],
+    'api/v1/users' => ['Api\\UsersController', 'handle'],
+    'api/v1/users/(\d+)' => ['Api\\UsersController', 'handle'],
+    'api/v1/programs' => ['Api\\ProgramsController', 'handle'],
+    'api/v1/programs/(\d+)' => ['Api\\ProgramsController', 'handle'],
+    'api/v1/partners' => ['Api\\PartnersController', 'handle'],
+    'api/v1/partners/(\d+)' => ['Api\\PartnersController', 'handle'],
+    'api/v1/partners/(\d+)/links' => ['Api\\PartnerLinksController', 'handle'],
+    'api/v1/partners/(\d+)/programs' => ['Api\\PartnerProgramsController', 'handle'],
 
     // Webhook routes
     'webhook/stripe' => ['WebhookController', 'stripeWebhook'],
