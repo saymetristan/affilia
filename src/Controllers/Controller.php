@@ -5,7 +5,62 @@ namespace Numok\Controllers;
 use Numok\Database\Database;
 
 class Controller {
-    
+
+    protected function detectRequestScheme(): string {
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+            $forwarded = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO']);
+            return strtolower(trim($forwarded[0])) === 'https' ? 'https' : 'http';
+        }
+
+        if (!empty($_SERVER['REQUEST_SCHEME'])) {
+            return strtolower($_SERVER['REQUEST_SCHEME']) === 'https' ? 'https' : 'http';
+        }
+
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            return 'https';
+        }
+
+        return 'http';
+    }
+
+    protected function resolveAppBaseUrl(?array $settings = null): string {
+        $settings = $settings ?? $this->getSettings();
+        $rawAppUrl = trim($settings['app_url'] ?? '');
+
+        if ($rawAppUrl !== '') {
+            $normalized = $this->normalizeUrl($rawAppUrl);
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
+        $scheme = $this->detectRequestScheme();
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+        return sprintf('%s://%s', $scheme, $host);
+    }
+
+    protected function normalizeUrl(string $url, ?string $fallbackScheme = null): ?string {
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        $hasScheme = (bool)preg_match('#^https?://#i', $url);
+        $scheme = $fallbackScheme ?? $this->detectRequestScheme();
+
+        if (!$hasScheme) {
+            $url = sprintf('%s://%s', $scheme, ltrim($url, '/'));
+        }
+
+        $validated = filter_var($url, FILTER_VALIDATE_URL);
+        if ($validated === false) {
+            return null;
+        }
+
+        return rtrim($validated, '/');
+    }
+
     protected function handlePreflightRequest(): void {
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
             header('Access-Control-Allow-Origin: *');

@@ -108,7 +108,7 @@
                         </div>
                         <div class="mt-3">
                             <div class="rounded-md bg-gray-50 p-4">
-                                <pre class="text-sm text-gray-800 whitespace-pre-wrap"><code class="language-html">&lt;script src="https://<?= $_SERVER['HTTP_HOST'] ?>/tracking/program-<?= $program['id'] ?>.js"&gt;&lt;/script&gt;</code></pre>
+                                <pre class="text-sm text-gray-800 whitespace-pre-wrap"><code class="language-html">&lt;script src="<?= htmlspecialchars(rtrim($trackingBaseUrl, '/')) ?>/tracking/program-<?= $program['id'] ?>.js"&gt;&lt;/script&gt;</code></pre>
                             </div>
                         </div>
                         <div class="mt-3 text-sm">
@@ -116,9 +116,10 @@
                             <ul class="mt-2 list-disc pl-5 text-gray-500 space-y-1">
                                 <li>Detects affiliate tracking codes in URLs (<code>?via=TRACKING_CODE</code>)</li>
                                 <li>Stores tracking data in cookies (30 day duration)</li>
-                                <li>Tracks clicks and page views</li>
+                                <li>Tracks clicks (if enabled in settings) and the first page view per visitor every 24 hours</li>
                                 <li>Provides Stripe integration helpers</li>
                             </ul>
+                            <p class="mt-2 text-gray-500">Impression events are automatically throttled so the same visitor and tracking code combination is only counted once per 24 hours.</p>
                         </div>
                     </div>
                 </div>

@@ -23,5 +23,6 @@ INSERT INTO settings (name, value) VALUES
 ('stripe_webhook_secret', ''),
 ('commission_rate', '10.00'),
 ('cookie_duration', '30'),
-('payout_threshold', '100.00')
+('payout_threshold', '100.00'),
+('click_tracking_enabled', '0')
 ON DUPLICATE KEY UPDATE name=name;

@@ -34,7 +34,6 @@ $routes = [
     'settings/update' => ['PartnerProfileController', 'update'],
     'logout' => ['PartnerAuthController', 'logout'],
     'dashboard' => ['PartnerDashboardController', 'index'],
-    'tracking' => ['PartnerTrackingController', 'index'],
     'earnings' => ['PartnerEarningsController', 'index'],
     'programs' => ['PartnerProgramsController', 'index'],
     'programs/join' => ['PartnerProgramsController', 'join'],
@@ -75,11 +74,15 @@ $routes = [
     'admin/conversions/update-status' => ['ConversionsController', 'updateStatus'],
     'admin/conversions/export' => ['ConversionsController', 'export'],
 
-    // API routes  
+    // Tracking script route
+    'tracking/program-(\d+)\.js' => ['TrackingController', 'script'],
+
+    // API routes
     'api/health' => ['HealthController', 'health'],
     'api/ready' => ['HealthController', 'ready'],
     'api/tracking/config/(\d+)' => ['TrackingController', 'config'],
     'api/tracking/click' => ['TrackingController', 'click'],
+    'api/tracking/impression' => ['TrackingController', 'impression'],
 
     // Webhook routes
     'webhook/stripe' => ['WebhookController', 'stripeWebhook'],

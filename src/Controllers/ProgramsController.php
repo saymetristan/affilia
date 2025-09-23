@@ -57,11 +57,13 @@ class ProgramsController extends Controller {
             'status' => 'active'
         ];
     
+        $baseUrl = $this->resolveAppBaseUrl();
+
         try {
-            Database::transaction(function() use ($data) {
+            Database::transaction(function() use ($data, $baseUrl) {
                 // Insert the program
                 $id = Database::insert('programs', $data);
-                
+
                 // Get the created program
                 $program = Database::query(
                     "SELECT * FROM programs WHERE id = ?",
@@ -69,7 +71,7 @@ class ProgramsController extends Controller {
                 )->fetch();
                 
                 // Generate tracking script
-                ProgramScriptGenerator::generate($program, $_SERVER['HTTP_HOST']);
+                ProgramScriptGenerator::generate($program, $baseUrl);
             });
     
             $_SESSION['success'] = 'Program created successfully.';
@@ -113,14 +115,13 @@ class ProgramsController extends Controller {
             exit;
         }
 
-        // Get settings for the app URL
-        $appUrlSetting = Database::query("SELECT * FROM settings WHERE name = 'app_url' LIMIT 1")->fetch();
         $settings = $this->getSettings();
+        $trackingBaseUrl = $this->resolveAppBaseUrl($settings);
 
         $this->view('programs/integration', [
             'title' => 'Integration Guide - ' . ($settings['custom_app_name'] ?? 'Numok'),
             'program' => $program,
-            'settings' => $appUrlSetting
+            'trackingBaseUrl' => $trackingBaseUrl
         ]);
     }
 
@@ -156,19 +157,21 @@ class ProgramsController extends Controller {
             'status' => $_POST['status'] ?? 'active'
         ];
 
+        $baseUrl = $this->resolveAppBaseUrl();
+
         try {
-            Database::transaction(function() use ($id, $data) {
+            Database::transaction(function() use ($id, $data, $baseUrl) {
                 // Update program
                 Database::update('programs', $data, 'id = ?', [$id]);
-                
+
                 // Get updated program data for script generation
                 $program = Database::query(
                     "SELECT * FROM programs WHERE id = ?",
                     [$id]
                 )->fetch();
-                
+
                 // Generate tracking script
-                ProgramScriptGenerator::generate($program, $_SERVER['HTTP_HOST']);
+                ProgramScriptGenerator::generate($program, $baseUrl);
             });
 
             $_SESSION['success'] = 'Program updated successfully.';

@@ -3,43 +3,72 @@
 namespace Numok\Services;
 
 class ProgramScriptGenerator {
-    public static function generate(array $program, string $domain): bool {
-        // Ensure domain doesn't end with a slash
-        $domain = rtrim($domain, '/');
-        
+    public static function generate(array $program, string $baseUrl): bool {
+        $baseUrl = rtrim($baseUrl, '/');
+        $programId = (int)$program['id'];
+        $cookieDays = (int)$program['cookie_days'];
+        $baseUrlLiteral = json_encode($baseUrl, JSON_UNESCAPED_SLASHES);
+
         $script = <<<JAVASCRIPT
 (function() {
     const COOKIE_NAME = 'numok_tracking';
-    const COOKIE_DAYS = {$program['cookie_days']};
-    const PROGRAM_ID = {$program['id']};
-    const API_DOMAIN = '{$domain}';
+    const IMPRESSION_KEY_PREFIX = 'numok_impression_';
+    const COOKIE_DAYS = {$cookieDays};
+    const PROGRAM_ID = {$programId};
+    const API_BASE = {$baseUrlLiteral};
 
     class NumokTracker {
         constructor() {
             this.init();
         }
 
-        init() {
+        async init() {
             const urlParams = new URLSearchParams(window.location.search);
+            let trackingData = this.getTrackingData();
+
             if (urlParams.has('via')) {
-                const trackingData = {
+                trackingData = {
                     tracking_code: urlParams.get('via'),
                     sid: urlParams.get('sid') || null,
                     sid2: urlParams.get('sid2') || null,
                     sid3: urlParams.get('sid3') || null,
                     referrer: document.referrer || null,
+                    landing_page: window.location.href,
                     timestamp: new Date().toISOString()
                 };
 
-                this.saveTrackingData(trackingData);
+                trackingData = this.saveTrackingData(trackingData);
+            }
+
+            if (trackingData && trackingData.tracking_code) {
+                this.trackImpression(trackingData.tracking_code).catch(console.error);
             }
         }
 
         saveTrackingData(data) {
+            const storedData = {
+                tracking_code: data.tracking_code,
+                sid: data.sid || null,
+                sid2: data.sid2 || null,
+                sid3: data.sid3 || null,
+                referrer: data.referrer || null,
+                landing_page: data.landing_page || window.location.href,
+                timestamp: data.timestamp || new Date().toISOString()
+            };
+
             const expires = new Date();
             expires.setDate(expires.getDate() + COOKIE_DAYS);
-            document.cookie = `\${COOKIE_NAME}=\${JSON.stringify(data)};expires=\${expires.toUTCString()};path=/`;
-            this.trackClick(data).catch(console.error);
+            const cookieParts = [
+                COOKIE_NAME + '=' + encodeURIComponent(JSON.stringify(storedData)),
+                'expires=' + expires.toUTCString(),
+                'path=/',
+                'SameSite=Lax'
+            ];
+            document.cookie = cookieParts.join(';');
+
+            this.trackClick(storedData).catch(console.error);
+
+            return storedData;
         }
 
         async trackClick(data) {
@@ -47,7 +76,7 @@ class ProgramScriptGenerator {
                 const trackingEnabled = await this.checkTrackingEnabled();
                 if (!trackingEnabled) return;
 
-                await fetch(`https://\${API_DOMAIN}/api/tracking/click`, {
+                await fetch(API_BASE + '/api/tracking/click', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -59,12 +88,64 @@ class ProgramScriptGenerator {
 
         async checkTrackingEnabled() {
             try {
-                const response = await fetch(`https://\${API_DOMAIN}/api/tracking/config/\${PROGRAM_ID}`);
+                const response = await fetch(API_BASE + '/api/tracking/config/' + PROGRAM_ID);
                 const config = await response.json();
-                return config.track_clicks || false;
-            } catch {
+                return Boolean(config.track_clicks);
+            } catch (error) {
+                console.error('Unable to determine click tracking status:', error);
                 return false;
             }
+        }
+
+        async trackImpression(trackingCode) {
+            if (!trackingCode) return;
+
+            const markerKey = IMPRESSION_KEY_PREFIX + trackingCode;
+            if (this.hasRecentImpression(markerKey)) {
+                return;
+            }
+
+            try {
+                await fetch(API_BASE + '/api/tracking/impression', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        program_id: PROGRAM_ID,
+                        tracking_code: trackingCode,
+                        url: window.location.href
+                    })
+                });
+
+                this.setImpressionMarker(markerKey);
+            } catch (error) {
+                console.error('Impression tracking failed:', error);
+            }
+        }
+
+        setImpressionMarker(key) {
+            const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            const markerParts = [
+                key + '=' + Date.now(),
+                'expires=' + expires.toUTCString(),
+                'path=/',
+                'SameSite=Lax'
+            ];
+            document.cookie = markerParts.join(';');
+        }
+
+        hasRecentImpression(key) {
+            const marker = this.getCookie(key);
+            if (!marker) {
+                return false;
+            }
+
+            const timestamp = parseInt(marker, 10);
+            if (Number.isNaN(timestamp)) {
+                return true;
+            }
+
+            const elapsed = Date.now() - timestamp;
+            return elapsed < 24 * 60 * 60 * 1000;
         }
 
         getStripeMetadata() {
@@ -73,9 +154,9 @@ class ProgramScriptGenerator {
 
             return {
                 numok_tracking_code: data.tracking_code,
-                ...data.sid && { numok_sid: data.sid },
-                ...data.sid2 && { numok_sid2: data.sid2 },
-                ...data.sid3 && { numok_sid3: data.sid3 }
+                ...(data.sid ? { numok_sid: data.sid } : {}),
+                ...(data.sid2 ? { numok_sid2: data.sid2 } : {}),
+                ...(data.sid3 ? { numok_sid3: data.sid3 } : {})
             };
         }
 
@@ -84,9 +165,14 @@ class ProgramScriptGenerator {
             if (!cookie) return null;
 
             try {
-                return JSON.parse(cookie);
-            } catch {
-                return null;
+                return JSON.parse(decodeURIComponent(cookie));
+            } catch (error) {
+                try {
+                    return JSON.parse(cookie);
+                } catch (innerError) {
+                    console.error('Failed to parse tracking cookie:', innerError);
+                    return null;
+                }
             }
         }
 

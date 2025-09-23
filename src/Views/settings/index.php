@@ -233,23 +233,44 @@
                     </div>
                 </div>
 
-                <!-- Partner Settings -->
+                <!-- Application Settings -->
                 <div class="bg-white shadow sm:rounded-lg">
                     <div class="px-4 py-5 sm:p-6">
-                        <h3 class="text-base font-semibold leading-6 text-gray-900">Partner Settings</h3>
+                        <h3 class="text-base font-semibold leading-6 text-gray-900">Application Settings</h3>
                         <div class="mt-4 max-w-xl">
-                            <form action="/admin/settings/update" method="POST">
-                                <div class="mb-4">
-                                    <label for="partner_welcome_message" class="block text-sm font-medium text-gray-700">Welcome Message</label>
-                                    <textarea name="partner_welcome_message" id="partner_welcome_message" rows="4"
-                                            class="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3"><?= htmlspecialchars($settings['partner_welcome_message'] ?? '') ?></textarea>
-                                    <p class="mt-2 text-sm text-gray-500">This message will be displayed to partners on their dashboard.</p>
+                            <form action="/admin/settings/update" method="POST" class="space-y-5">
+                                <div>
+                                    <label for="app_url" class="block text-sm font-medium text-gray-700">Application URL</label>
+                                    <input type="url" name="app_url" id="app_url"
+                                           value="<?= htmlspecialchars($settings['app_url'] ?? $resolvedAppUrl) ?>"
+                                           placeholder="https://example.com"
+                                           class="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3">
+                                    <p class="mt-2 text-sm text-gray-500">Used to generate tracking scripts, webhook URLs, and API calls. Include the scheme (http or https).</p>
                                 </div>
 
-                                <div class="mt-6">
-                                    <button type="submit" 
+                                <div>
+                                    <label for="partner_welcome_message" class="block text-sm font-medium text-gray-700">Partner Welcome Message</label>
+                                    <textarea name="partner_welcome_message" id="partner_welcome_message" rows="4"
+                                              class="mt-1 block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3"><?= htmlspecialchars($settings['partner_welcome_message'] ?? '') ?></textarea>
+                                    <p class="mt-2 text-sm text-gray-500">Displayed to partners on their dashboard after logging in.</p>
+                                </div>
+
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1 pr-4">
+                                        <span class="block text-sm font-medium text-gray-700">Click Tracking</span>
+                                        <p class="mt-1 text-sm text-gray-500">Control whether the generated JavaScript reports click events to the API.</p>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="hidden" name="click_tracking_enabled" value="0">
+                                        <input type="checkbox" name="click_tracking_enabled" value="1" class="h-4 w-4 text-indigo-600 border-gray-300 rounded" <?= !empty($settings['click_tracking_enabled']) ? 'checked' : '' ?>>
+                                        <span class="ml-2 text-sm text-gray-600">Enable</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2">
+                                    <button type="submit"
                                             class="inline-flex justify-center rounded-md bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                                        Save Partner Settings
+                                        Save Application Settings
                                     </button>
                                 </div>
                             </form>
@@ -288,7 +309,7 @@
                                     <li>Go to your <a href="https://dashboard.stripe.com/apikeys" class="text-indigo-600 hover:text-indigo-500" target="_blank">Stripe Dashboard</a></li>
                                     <li>Copy your Secret Key</li>
                                     <li>Create a new webhook endpoint pointing to:
-                                        <code class="block mt-1 p-2 bg-gray-50 rounded text-xs"><?= htmlspecialchars(rtrim($settings['app_url'] ?? 'https://'.$_SERVER['HTTP_HOST'], '/') . '/webhook/stripe') ?></code>
+                                        <code class="block mt-1 p-2 bg-gray-50 rounded text-xs"><?= htmlspecialchars(rtrim(($settings['app_url'] ?? $resolvedAppUrl), '/') . '/webhook/stripe') ?></code>
                                     </li>
                                     <li>Copy the webhook signing secret</li>
                                 </ol>

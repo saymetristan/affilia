@@ -13,10 +13,12 @@ class SettingsController extends Controller {
 
     public function index(): void {
         $settings = $this->getAllSettings();
-        
+        $resolvedAppUrl = $this->resolveAppBaseUrl($settings);
+
         $this->view('settings/index', [
             'title' => 'Settings - ' . ($settings['custom_app_name'] ?? 'Numok'),
             'settings' => $settings,
+            'resolvedAppUrl' => $resolvedAppUrl,
             'success' => $_SESSION['settings_success'] ?? null,
             'error' => $_SESSION['settings_error'] ?? null
         ]);
@@ -32,18 +34,50 @@ class SettingsController extends Controller {
         }
 
         try {
-            Database::transaction(function() {
-                $settings = [
-                    'app_name' => $_POST['app_name'] ?? 'Numok',
-                    'partner_welcome_message' => $_POST['partner_welcome_message'] ?? '',
-                    'stripe_secret_key' => $_POST['stripe_secret_key'] ?? '',
-                    'stripe_webhook_secret' => $_POST['stripe_webhook_secret'] ?? ''
-                ];
+            $currentSettings = $this->getAllSettings();
 
-                foreach ($settings as $key => $value) {
+            $settingsToPersist = [
+                'app_name' => $currentSettings['app_name'] ?? 'Numok',
+                'partner_welcome_message' => $currentSettings['partner_welcome_message'] ?? '',
+                'stripe_secret_key' => $currentSettings['stripe_secret_key'] ?? '',
+                'stripe_webhook_secret' => $currentSettings['stripe_webhook_secret'] ?? '',
+                'app_url' => $currentSettings['app_url'] ?? '',
+                'click_tracking_enabled' => $currentSettings['click_tracking_enabled'] ?? '0'
+            ];
+
+            if (array_key_exists('app_name', $_POST)) {
+                $settingsToPersist['app_name'] = trim((string)$_POST['app_name']);
+            }
+
+            if (array_key_exists('partner_welcome_message', $_POST)) {
+                $settingsToPersist['partner_welcome_message'] = trim((string)$_POST['partner_welcome_message']);
+            }
+
+            if (array_key_exists('stripe_secret_key', $_POST)) {
+                $settingsToPersist['stripe_secret_key'] = trim((string)$_POST['stripe_secret_key']);
+            }
+
+            if (array_key_exists('stripe_webhook_secret', $_POST)) {
+                $settingsToPersist['stripe_webhook_secret'] = trim((string)$_POST['stripe_webhook_secret']);
+            }
+
+            if (array_key_exists('app_url', $_POST)) {
+                $normalizedUrl = $this->normalizeUrl((string)$_POST['app_url']);
+                if ($normalizedUrl === null && trim((string)$_POST['app_url']) !== '') {
+                    throw new \InvalidArgumentException('The provided application URL is not valid.');
+                }
+                $settingsToPersist['app_url'] = $normalizedUrl ?? '';
+            }
+
+            if (array_key_exists('click_tracking_enabled', $_POST)) {
+                $settingsToPersist['click_tracking_enabled'] = $_POST['click_tracking_enabled'] === '1' ? '1' : '0';
+            }
+
+            Database::transaction(function() use ($settingsToPersist) {
+                foreach ($settingsToPersist as $key => $value) {
                     Database::query(
-                        "INSERT INTO settings (name, value) 
-                         VALUES (?, ?) 
+                        "INSERT INTO settings (name, value)
+                         VALUES (?, ?)
                          ON DUPLICATE KEY UPDATE value = VALUES(value)",
                         [$key, $value]
                     );
@@ -51,6 +85,8 @@ class SettingsController extends Controller {
             });
 
             $_SESSION['settings_success'] = 'Settings updated successfully.';
+        } catch (\InvalidArgumentException $exception) {
+            $_SESSION['settings_error'] = $exception->getMessage();
         } catch (\Exception $e) {
             $_SESSION['settings_error'] = 'Failed to update settings. Please try again.';
         }
